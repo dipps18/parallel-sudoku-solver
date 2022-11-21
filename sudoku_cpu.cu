@@ -3,7 +3,15 @@
 #include<cstdlib>
 #include<algorithm>
 
-void display_grid(int* h_grid);
+void display_grid(int *h_grid)
+{
+    for(int i = 0; i < 9; i++)
+    {
+        for(int j = 0; j < 9; j++)
+            std::cout << h_grid[9*i + j] << " ";
+        std::cout << std::endl;
+    }
+}
 
 bool is_safe(int* h_grid, int val, int row, int col)
 {
@@ -86,16 +94,6 @@ bool is_filled(int* h_grid)
     return true;
 }
 
-void display_grid(int *h_grid)
-{
-    for(int i = 0; i < 9; i++)
-    {
-        for(int j = 0; j < 9; j++)
-            std::cout << h_grid[9*i + j] << " ";
-        std::cout << std::endl;
-    }
-}
-
 void dealloc_mem(int** &grid, int size)
 {
     for(int i = 0; i < size; i++)
@@ -142,6 +140,6 @@ void solve(int (&h_grid)[81])
 
 int main(void)
 {
-    int h_grid[81]={3, 0, 6, 5, 0, 8, 4, 0, 0, 5, 2, 0, 0, 0, 0, 0, 0, 0 ,0, 8, 7, 0, 0, 0, 0, 3, 1 ,0, 0, 3, 0, 1, 0, 0, 8, 0 ,9, 0, 0, 8, 6, 3, 0, 0, 5,0, 5, 0, 0, 9, 0, 6, 0, 0 ,1, 3, 0, 0, 0, 0, 2, 5, 0 ,0, 0, 0, 0, 0, 0, 0, 7, 4 ,0, 0, 5, 2, 0, 6, 3, 0, 0};
+    int h_grid[81] = {3, 0, 6, 5, 0, 8, 4, 0, 0, 5, 2, 0, 0, 0, 0, 0, 0, 0, 0, 8, 7, 0, 0, 0, 0, 3, 1, 0, 0, 3, 0, 1, 0, 0, 8, 0, 9, 0, 0, 8, 6, 3, 0, 0, 5, 0, 5, 0, 0, 9, 0, 6, 0, 0, 1, 3, 0, 0, 0, 0, 2, 5, 0 ,0, 0, 0, 0, 0, 0, 0, 7, 4, 0, 0, 5, 2, 0, 6, 3, 0, 0};
     solve(h_grid);
 }
