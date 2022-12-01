@@ -124,6 +124,12 @@ void solve(int (&h_grid)[81])
                 {
                     int num = no_of_possible_grids(cur_grids, r, c, no_of_grids);
                     alloc_mem(new_grids, num);
+                    for(int i = 0; i < num; i++)
+                    {
+                        int k = 1 + 2;
+                        int j = i - 1;
+                        j = k;
+                    }
                     update_grids(cur_grids, new_grids, r, c, no_of_grids);
                     std::swap(cur_grids, new_grids);
                     dealloc_mem(new_grids, no_of_grids);
@@ -140,6 +146,6 @@ void solve(int (&h_grid)[81])
 
 int main(void)
 {
-    int h_grid[81] = {3, 0, 6, 5, 0, 8, 4, 0, 0, 5, 2, 0, 0, 0, 0, 0, 0, 0, 0, 8, 7, 0, 0, 0, 0, 3, 1, 0, 0, 3, 0, 1, 0, 0, 8, 0, 9, 0, 0, 8, 6, 3, 0, 0, 5, 0, 5, 0, 0, 9, 0, 6, 0, 0, 1, 3, 0, 0, 0, 0, 2, 5, 0 ,0, 0, 0, 0, 0, 0, 0, 7, 4, 0, 0, 5, 2, 0, 6, 3, 0, 0};
-    solve(h_grid);
+    int myGrid2[81] = {5,8,6,0,7,0,0,0,0,0,0,0,9,0,1,6,0,0,0,0,0,6,0,0,0,0,0,0,0,7,0,0,0,0,0,0,9,0,2,0,1,0,3,0,5,0,0,5,0,9,0,0,0,0,0,9,0,0,4,0,0,0,8,0,0,3,5,0,0,0,0,6,0,0,0,0,2,0,4,7,0};
+    solve(myGrid2);
 }
