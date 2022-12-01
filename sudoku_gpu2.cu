@@ -107,13 +107,16 @@ __global__ void possibleGrids(grid* grids, int row, int col, int curGridCount, i
 
 void solve(grid &initGrid)
 {
-    int threadsPerBlock = 128;
+    int threadsPerBlock = 256;
     grid *curGrids;
     int *curCount;
     int *startPositions;
     checkCudaErrors(cudaMallocManaged(&curCount, sizeof(int)));
-    checkCudaErrors(cudaMallocManaged(&curGrids, sizeof(grid) * 20000000));
-    checkCudaErrors(cudaMallocManaged(&startPositions, sizeof(int) * 2000000));
+    checkCudaErrors(cudaMallocManaged(&curGrids, sizeof(grid) * 1000000));
+    checkCudaErrors(cudaMallocManaged(&startPositions, sizeof(int) * 1000000));
+    memset(curGrids, 0, sizeof(grid) * 1000000);
+    memset(startPositions, 0, sizeof(int) * 1000000);
+
     *curCount = 1;
     memcpy(curGrids, initGrid, sizeof(grid));
     for(int i = 0; i < 9; i++)
@@ -135,6 +138,8 @@ void solve(grid &initGrid)
                 startPositions[0] = 0;
                 initNewGrids<<<numBlocks, threadsPerBlock>>>(curGrids, i, j, *curCount, startPositions);
                 cudaDeviceSynchronize();
+//                for(int k = 0; k < prefixSum; k++)
+ //                   display_grid(curGrids[k]);
                 *curCount =  prefixSum;
             }
         }
