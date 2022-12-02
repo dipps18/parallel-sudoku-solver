@@ -1,0 +1,4 @@
+*.o
+sudoku_cpu
+sudoku_gpu
+main
