@@ -4,6 +4,7 @@
 #include<algorithm>
 #include<thrust/swap.h>
 #include <thrust/scan.h>
+#include<thrust/reduce.h>
 #include <thrust/execution_policy.h>
 #include <cuda_runtime.h>
 
@@ -63,8 +64,6 @@ __global__ void initNewGrids(grid *curGrids, grid *newGrids, int r, int c, int c
             }
         }
     }
-    __syncthreads();
-
 }
 
 __global__ void possibleGrids(grid* grids, int row, int col, int curGridCount, int* startPositions)
@@ -72,14 +71,12 @@ __global__ void possibleGrids(grid* grids, int row, int col, int curGridCount, i
     int tid = threadIdx.x + blockIdx.x*blockDim.x;
     if(tid < curGridCount)
     {
-        grid localGrid;
         int count = 0; //new grids that will be formed from the current grids
-        memcpy(localGrid, grids[tid], sizeof(grid));
         int mp[10] = {0};
         for(int i = 0; i < 9; i++)
         {
-            int row_cell = localGrid[9*i + col];
-            int col_cell = localGrid[9*row + i];
+            int row_cell = grids[tid][9*i + col];
+            int col_cell = grids[tid][9*row + i];
             mp[row_cell]++;
             mp[col_cell]++;
         }
@@ -105,10 +102,9 @@ __global__ void possibleGrids(grid* grids, int row, int col, int curGridCount, i
 
 void solve(grid &initGrid)
 {
-    int threadsPerBlock = 256;
+    int threadsPerBlock = 128;
     grid *curGrids, *newGrids;
-    int *curCount;
-    int *startPositions;
+    int *curCount, *startPositions, newCount = 0;
     checkCudaErrors(cudaMallocManaged(&curCount, sizeof(int)));
     checkCudaErrors(cudaMemset(curCount, 0, sizeof(int)));
     checkCudaErrors(cudaMallocManaged(&curGrids, sizeof(grid)));
@@ -124,36 +120,28 @@ void solve(grid &initGrid)
                 checkCudaErrors(cudaMallocManaged(&startPositions, sizeof(int)*(*curCount)));
                 possibleGrids<<<numBlocks, threadsPerBlock>>>(curGrids, i, j, *curCount, startPositions);
                 cudaDeviceSynchronize();
-                int prefixSum = startPositions[0];
-                for(int k = 1; k < *curCount; k++) 
-                {
-                    int temp = startPositions[k];
-                    startPositions[k] = prefixSum;
-                    prefixSum += temp;
-                }
-                startPositions[0] = 0;
-                checkCudaErrors(cudaMallocManaged(&newGrids, sizeof(grid) * prefixSum));
-                checkCudaErrors(cudaMemset(newGrids, 0, sizeof(grid) * prefixSum));
+                newCount = thrust::reduce(startPositions, startPositions + *curCount);       
+                thrust::exclusive_scan(startPositions, startPositions + *curCount, startPositions);
+                checkCudaErrors(cudaMallocManaged(&newGrids, sizeof(grid) * newCount));
+                checkCudaErrors(cudaMemset(newGrids, 0, sizeof(grid) * newCount));
   
 
                 initNewGrids<<<numBlocks, threadsPerBlock>>>(curGrids, newGrids, i, j, *curCount, startPositions);
                 cudaDeviceSynchronize();
                 checkCudaErrors(cudaFree(curGrids));
-                checkCudaErrors(cudaMallocManaged(&curGrids, sizeof(grid)* prefixSum));
+                checkCudaErrors(cudaMallocManaged(&curGrids, sizeof(grid)* newCount));
 
                 cudaMemset(curGrids, 0, sizeof(grid));
                 thrust::swap(newGrids, curGrids);
-                *curCount = prefixSum;
-                prefixSum = 0;
+                *curCount = newCount;
                 checkCudaErrors(cudaFree(startPositions));
                 checkCudaErrors(cudaFree(newGrids));
 
             }
         }
     }
-    if(*curCount > 1) std::cout <<"\n\nERROR!\n\n";
-    else
-        std::cout << "\n\ngrid solved!\n\n";
+
+    std::cout << "\n\ngrid solved!\n\n";
     display_grid(curGrids[0]);
     checkCudaErrors(cudaFree(curGrids));
     checkCudaErrors(cudaFree(curCount));
@@ -168,6 +156,6 @@ int main(void)
     //display_grid(myGrid);
     //solve(myGrid);
     //std::cout<<"\n\n\n";
-    display_grid(myGrid2);
-    solve(myGrid2);
+     display_grid(myGrid2);
+     solve(myGrid2);
 }
