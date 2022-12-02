@@ -102,14 +102,16 @@ __global__ void possibleGrids(grid* grids, int row, int col, int curGridCount, i
 
 void solve(grid &initGrid)
 {
-    int threadsPerBlock = 128;
+    int threadsPerBlock = 256;
+    int n = 1000000;
     grid *curGrids, *newGrids;
     int *curCount, *startPositions, newCount = 0;
     checkCudaErrors(cudaMallocManaged(&curCount, sizeof(int)));
-    checkCudaErrors(cudaMemset(curCount, 0, sizeof(int)));
-    checkCudaErrors(cudaMallocManaged(&curGrids, sizeof(grid)));
+    checkCudaErrors(cudaMallocManaged(&curGrids, n*sizeof(grid)));
+    checkCudaErrors(cudaMallocManaged(&newGrids, n*sizeof(grid)));
+    checkCudaErrors(cudaMallocManaged(&startPositions, n*sizeof(int)));
     *curCount = 1;
-    memcpy(curGrids, initGrid, sizeof(grid));
+    memcpy(curGrids[0], initGrid, sizeof(grid));
     for(int i = 0; i < 9; i++)
     {
         for(int j = 0; j < 9; j++)
@@ -117,26 +119,14 @@ void solve(grid &initGrid)
             if(initGrid[9*i + j] == 0)
             {
                 int numBlocks = (*curCount + threadsPerBlock - 1)/threadsPerBlock;
-                checkCudaErrors(cudaMallocManaged(&startPositions, sizeof(int)*(*curCount)));
                 possibleGrids<<<numBlocks, threadsPerBlock>>>(curGrids, i, j, *curCount, startPositions);
                 cudaDeviceSynchronize();
                 newCount = thrust::reduce(startPositions, startPositions + *curCount);       
                 thrust::exclusive_scan(startPositions, startPositions + *curCount, startPositions);
-                checkCudaErrors(cudaMallocManaged(&newGrids, sizeof(grid) * newCount));
-                checkCudaErrors(cudaMemset(newGrids, 0, sizeof(grid) * newCount));
-  
-
                 initNewGrids<<<numBlocks, threadsPerBlock>>>(curGrids, newGrids, i, j, *curCount, startPositions);
                 cudaDeviceSynchronize();
-                checkCudaErrors(cudaFree(curGrids));
-                checkCudaErrors(cudaMallocManaged(&curGrids, sizeof(grid)* newCount));
-
-                cudaMemset(curGrids, 0, sizeof(grid));
                 thrust::swap(newGrids, curGrids);
                 *curCount = newCount;
-                checkCudaErrors(cudaFree(startPositions));
-                checkCudaErrors(cudaFree(newGrids));
-
             }
         }
     }
@@ -145,6 +135,8 @@ void solve(grid &initGrid)
     display_grid(curGrids[0]);
     checkCudaErrors(cudaFree(curGrids));
     checkCudaErrors(cudaFree(curCount));
+    checkCudaErrors(cudaFree(newGrids));
+    checkCudaErrors(cudaFree(startPositions));
 }
 
 

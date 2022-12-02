@@ -124,7 +124,7 @@ void solve(int (&h_grid)[81])
                 {
                     int num = no_of_possible_grids(cur_grids, r, c, no_of_grids);
                     alloc_mem(new_grids, num);
-                    for(int i = 0; i < num; i++)
+                    for(int i = 0; i < 2*num; i++)
                     {
                         int k = 1 + 2;
                         int j = i - 1;
