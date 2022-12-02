@@ -67,7 +67,7 @@ __global__ void initNewGrids(grid *curGrids, grid *newGrids, int r, int c, int c
 
 }
 
-__global__ void possibleGrids(grid* grids, int row, int col, int curGridCount, int* newGridCount, int* startPositions)
+__global__ void possibleGrids(grid* grids, int row, int col, int curGridCount, int* startPositions)
 {
     int tid = threadIdx.x + blockIdx.x*blockDim.x;
     if(tid < curGridCount)
@@ -96,10 +96,7 @@ __global__ void possibleGrids(grid* grids, int row, int col, int curGridCount, i
         for(int i = 1; i < 10; i++)
         {
             if(mp[i] == 0)
-            { 
                 count++;
-                atomicAdd(newGridCount, 1);
-            }
         }
         startPositions[tid] = count;
     }
@@ -110,12 +107,9 @@ void solve(grid &initGrid)
 {
     int threadsPerBlock = 256;
     grid *curGrids, *newGrids;
-    int *curCount, *newCount;
+    int *curCount;
     int *startPositions;
     checkCudaErrors(cudaMallocManaged(&curCount, sizeof(int)));
-    checkCudaErrors(cudaMallocManaged(&newCount, sizeof(int)));
-
-    checkCudaErrors(cudaMemset(newCount, 0, sizeof(int)));
     checkCudaErrors(cudaMemset(curCount, 0, sizeof(int)));
     checkCudaErrors(cudaMallocManaged(&curGrids, sizeof(grid)));
     *curCount = 1;
@@ -128,10 +122,8 @@ void solve(grid &initGrid)
             {
                 int numBlocks = (*curCount + threadsPerBlock - 1)/threadsPerBlock;
                 checkCudaErrors(cudaMallocManaged(&startPositions, sizeof(int)*(*curCount)));
-                possibleGrids<<<numBlocks, threadsPerBlock>>>(curGrids, i, j, *curCount, newCount, startPositions);
+                possibleGrids<<<numBlocks, threadsPerBlock>>>(curGrids, i, j, *curCount, startPositions);
                 cudaDeviceSynchronize();
-                checkCudaErrors(cudaMallocManaged(&newGrids, sizeof(grid) * (*newCount)));
-                checkCudaErrors(cudaMemset(newGrids, 0, sizeof(grid) * (*newCount)));
                 int prefixSum = startPositions[0];
                 for(int k = 1; k < *curCount; k++) 
                 {
@@ -140,16 +132,19 @@ void solve(grid &initGrid)
                     prefixSum += temp;
                 }
                 startPositions[0] = 0;
+                checkCudaErrors(cudaMallocManaged(&newGrids, sizeof(grid) * prefixSum));
+                checkCudaErrors(cudaMemset(newGrids, 0, sizeof(grid) * prefixSum));
+  
 
                 initNewGrids<<<numBlocks, threadsPerBlock>>>(curGrids, newGrids, i, j, *curCount, startPositions);
                 cudaDeviceSynchronize();
                 checkCudaErrors(cudaFree(curGrids));
-                checkCudaErrors(cudaMallocManaged(&curGrids, sizeof(grid)*(*newCount)));
+                checkCudaErrors(cudaMallocManaged(&curGrids, sizeof(grid)* prefixSum));
 
                 cudaMemset(curGrids, 0, sizeof(grid));
                 thrust::swap(newGrids, curGrids);
-                std::swap(curCount, newCount);
-                *newCount = 0;
+                *curCount = prefixSum;
+                prefixSum = 0;
                 checkCudaErrors(cudaFree(startPositions));
                 checkCudaErrors(cudaFree(newGrids));
 
@@ -162,18 +157,17 @@ void solve(grid &initGrid)
     display_grid(curGrids[0]);
     checkCudaErrors(cudaFree(curGrids));
     checkCudaErrors(cudaFree(curCount));
-    checkCudaErrors(cudaFree(newCount));
 }
 
 
 int main(void)
 {
-    grid myGrid = {3, 0, 6, 5, 0, 8, 4, 0, 0, 5, 2, 0, 0, 0, 0, 0, 0, 0, 0, 8, 7, 0, 0, 0, 0, 3, 1, 0, 0, 3, 0, 1, 0, 0, 8, 0, 9, 0, 0, 8, 6, 3, 0, 0, 5, 0, 5, 0, 0, 9, 0, 6, 0, 0, 1, 3, 0, 0, 0, 0, 2, 5, 0 ,0, 0, 0, 0, 0, 0, 0, 7, 4, 0, 0, 5, 2, 0, 6, 3, 0, 0};
+    //grid myGrid = {3, 0, 6, 5, 0, 8, 4, 0, 0, 5, 2, 0, 0, 0, 0, 0, 0, 0, 0, 8, 7, 0, 0, 0, 0, 3, 1, 0, 0, 3, 0, 1, 0, 0, 8, 0, 9, 0, 0, 8, 6, 3, 0, 0, 5, 0, 5, 0, 0, 9, 0, 6, 0, 0, 1, 3, 0, 0, 0, 0, 2, 5, 0 ,0, 0, 0, 0, 0, 0, 0, 7, 4, 0, 0, 5, 2, 0, 6, 3, 0, 0};
     grid myGrid2 = {5,8,6,0,7,0,0,0,0,0,0,0,9,0,1,6,0,0,0,0,0,6,0,0,0,0,0,0,0,7,0,0,0,0,0,0,9,0,2,0,1,0,3,0,5,0,0,5,0,9,0,0,0,0,0,9,0,0,4,0,0,0,8,0,0,3,5,0,0,0,0,6,0,0,0,0,2,0,4,7,0};
     //grid myGrid3 = {0,7,0000043040009610800634900094052000358460020000800530080070091902100005007040802}
-    display_grid(myGrid);
-    solve(myGrid);
-    std::cout<<"\n\n\n";
+    //display_grid(myGrid);
+    //solve(myGrid);
+    //std::cout<<"\n\n\n";
     display_grid(myGrid2);
     solve(myGrid2);
 }
