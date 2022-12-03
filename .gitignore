@@ -2,3 +2,4 @@
 sudoku_cpu
 sudoku_gpu
 main
+analysis.nvprof

@@ -100,18 +100,19 @@ __global__ void possibleGrids(grid* grids, int row, int col, int curGridCount, i
     
 }
 
-void solve(grid &initGrid)
+float solve(grid &initGrid, grid* &curGrids, grid* &newGrids, int* startPositions)
 {
-    int threadsPerBlock = 256;
-    int n = 1000000;
-    grid *curGrids, *newGrids;
-    int *curCount, *startPositions, newCount = 0;
+    cudaEvent_t algo_start, algo_stop;
+    float algo_time = 0;
+    int threadsPerBlock = 256, newCount = 0, *curCount;
     checkCudaErrors(cudaMallocManaged(&curCount, sizeof(int)));
-    checkCudaErrors(cudaMallocManaged(&curGrids, n*sizeof(grid)));
-    checkCudaErrors(cudaMallocManaged(&newGrids, n*sizeof(grid)));
-    checkCudaErrors(cudaMallocManaged(&startPositions, n*sizeof(int)));
     *curCount = 1;
     memcpy(curGrids[0], initGrid, sizeof(grid));
+
+    cudaEventCreate(&algo_start);
+    cudaEventCreate(&algo_stop);
+    cudaEventRecord(algo_start);
+
     for(int i = 0; i < 9; i++)
     {
         for(int j = 0; j < 9; j++)
@@ -121,28 +122,41 @@ void solve(grid &initGrid)
                 int numBlocks = (*curCount + threadsPerBlock - 1)/threadsPerBlock;
                 possibleGrids<<<numBlocks, threadsPerBlock>>>(curGrids, i, j, *curCount, startPositions);
                 cudaDeviceSynchronize();
+
                 newCount = thrust::reduce(startPositions, startPositions + *curCount);       
                 thrust::exclusive_scan(startPositions, startPositions + *curCount, startPositions);
+
                 initNewGrids<<<numBlocks, threadsPerBlock>>>(curGrids, newGrids, i, j, *curCount, startPositions);
                 cudaDeviceSynchronize();
+                
                 thrust::swap(newGrids, curGrids);
                 *curCount = newCount;
             }
         }
     }
+    cudaEventRecord(algo_stop);
+    cudaEventSynchronize(algo_stop);
+    cudaEventElapsedTime(&algo_time, algo_start, algo_stop);
 
-    std::cout << "Solved Grid:\n";
-    display_grid(curGrids[0]);
-    checkCudaErrors(cudaFree(curGrids));
     checkCudaErrors(cudaFree(curCount));
-    checkCudaErrors(cudaFree(newGrids));
-    checkCudaErrors(cudaFree(startPositions));
+    return algo_time;
 }
-
 
 int main(void)
 {
-    //grid myGrid = ;
+    int n = 1000000, *startPositions;
+    grid *curGrids, *newGrids;
+    cudaEvent_t start_init, stop_init;
+    float init_time = 0, total_algo_time = 0;
+
+    cudaEventCreate(&start_init);
+    cudaEventCreate(&stop_init);
+    cudaEventRecord(start_init);
+
+    checkCudaErrors(cudaMallocManaged(&curGrids, n*sizeof(grid)));
+    checkCudaErrors(cudaMallocManaged(&newGrids, n*sizeof(grid)));
+    checkCudaErrors(cudaMallocManaged(&startPositions, n*sizeof(int)));
+
     grid myGrids[6] ={ 
         {5,8,6,0,7,0,0,0,0,0,0,0,9,0,1,6,0,0,0,0,0,6,0,0,0,0,0,0,0,7,0,0,0,0,0,0,9,0,2,0,1,0,3,0,5,0,0,5,0,9,0,0,0,0,0,9,0,0,4,0,0,0,8,0,0,3,5,0,0,0,0,6,0,0,0,0,2,0,4,7,0},
         {0,7,0,0,0,0,0,4,3,0,4,0,0,0,9,6,1,0,8,0,0,6,3,4,9,0,0,0,9,4,0,5,2,0,0,0,3,5,8,4,6,0,0,2,0,0,0,0,8,0,0,5,3,0,0,8,0,0,7,0,0,9,1,9,0,2,1,0,0,0,0,5,0,0,7,0,4,0,8,0,2},
@@ -150,11 +164,24 @@ int main(void)
         {0,4,8,3,0,1,5,6,0,3,6,0,0,0,8,0,9,0,9,1,0,6,7,0,0,0,3,0,2,0,0,0,0,9,3,5,5,0,9,0,1,0,2,0,0,6,7,0,0,2,0,0,1,0,0,0,4,0,0,2,1,0,7,0,9,0,1,0,0,0,0,8,1,5,0,8,3,4,0,2,9},
         {0,0,0,0,0,0,0,0,8,0,0,3,0,0,0,4,0,0,0,9,0,0,2,0,0,6,0,0,0,0,0,7,9,0,0,0,0,0,0,0,6,1,2,0,0,0,6,0,5,0,2,0,7,0,0,0,8,0,0,0,5,0,0,0,1,0,0,0,0,0,2,0,4,0,5,0,0,0,0,0,3},
         {0,0,0,0,0,0,0,0,2,0,0,8,0,1,0,9,0,0,5,0,0,0,0,3,0,4,0,0,0,0,1,0,9,3,0,0,0,6,0,0,3,0,0,8,0,0,0,3,7,0,0,0,0,0,0,4,0,0,0,0,0,0,5,3,0,1,0,7,0,8,0,0,2,0,0,0,0,0,0,0,0}};
+
+    cudaEventRecord(stop_init);
+    cudaEventElapsedTime(&init_time, start_init, stop_init);
+
     for(int i = 0; i < 6; i++)
     {
-        display_grid(myGrids[i]);
         std::cout <<"Grid "<<i + 1<< ": \n";
-        solve(myGrids[i]);
+        display_grid(myGrids[i]);
+        total_algo_time += solve(myGrids[i], curGrids, newGrids, startPositions);
+        std::cout << "\nSolved Grid:\n";
+        display_grid(curGrids[0]);
         std::cout << std::endl;
     }
+
+    std::cout << "\nTime taken for data generation: " << init_time << "ms"<< std::endl;
+    std::cout << "Total time taken by the main algorithm: " << total_algo_time << "ms"<< std::endl;
+
+    checkCudaErrors(cudaFree(curGrids));
+    checkCudaErrors(cudaFree(newGrids));
+    checkCudaErrors(cudaFree(startPositions));
 }
