@@ -49,20 +49,22 @@ __device__ bool is_safe(grid h_grid, int val, int row, int col)
     return true;
 }
 
-__global__ void initNewGrids(grid *curGrids, grid *newGrids, int r, int c, int curGridsSize, int* starPosition)
+__global__ void initNewGrids(grid *curGrids, grid *newGrids, int r, int c, int curGridsSize, int* startPositions)
 {
     int tid = blockDim.x*blockIdx.x + threadIdx.x;
     if(tid < curGridsSize)
     {
-        int idx = starPosition[tid];
+        grid newGridsTid[9] = {0};
+        int idx = 0;
         for(int i = 1; i <= 9; i++)
         {
             if(is_safe(curGrids[tid], i, r, c))
             {
                 curGrids[tid][r*9 + c] = i;
-                memcpy(newGrids[idx++], curGrids[tid], sizeof(grid));
+                memcpy(newGridsTid[idx++], curGrids[tid], sizeof(grid));
             }
         }
+        memcpy(newGrids + startPositions[tid], newGridsTid, sizeof(grid)*idx);
     }
 }
 
@@ -71,33 +73,14 @@ __global__ void possibleGrids(grid* grids, int row, int col, int curGridCount, i
     int tid = threadIdx.x + blockIdx.x*blockDim.x;
     if(tid < curGridCount)
     {
-        int count = 0; //new grids that will be formed from the current grids
-        int mp[10] = {0};
-        for(int i = 0; i < 9; i++)
+        int count = 0;
+        for(int i = 1; i <= 9; i++)
         {
-            int row_cell = grids[tid][9*i + col];
-            int col_cell = grids[tid][9*row + i];
-            mp[row_cell]++;
-            mp[col_cell]++;
-        }
-        int start_row = row - row % 3;
-        int start_col = col - col % 3;
-        for(int i = start_row; i < start_row + 3; i++)
-        {
-            for(int j = start_col; j < start_col + 3; j++)
-            {
-                int cell = grids[tid][9*i + j];
-                mp[cell]++;
-            }
-        }
-        for(int i = 1; i < 10; i++)
-        {
-            if(mp[i] == 0)
+            if(is_safe(grids[tid], i, row, col))
                 count++;
         }
         startPositions[tid] = count;
     }
-    
 }
 
 float solve(grid &initGrid, grid* &curGrids, grid* &newGrids, int* startPositions)
@@ -128,7 +111,7 @@ float solve(grid &initGrid, grid* &curGrids, grid* &newGrids, int* startPosition
 
                 initNewGrids<<<numBlocks, threadsPerBlock>>>(curGrids, newGrids, i, j, *curCount, startPositions);
                 cudaDeviceSynchronize();
-                
+
                 thrust::swap(newGrids, curGrids);
                 *curCount = newCount;
             }
@@ -166,6 +149,7 @@ int main(void)
         {0,0,0,0,0,0,0,0,2,0,0,8,0,1,0,9,0,0,5,0,0,0,0,3,0,4,0,0,0,0,1,0,9,3,0,0,0,6,0,0,3,0,0,8,0,0,0,3,7,0,0,0,0,0,0,4,0,0,0,0,0,0,5,3,0,1,0,7,0,8,0,0,2,0,0,0,0,0,0,0,0}};
 
     cudaEventRecord(stop_init);
+    cudaEventSynchronize(stop_init);
     cudaEventElapsedTime(&init_time, start_init, stop_init);
 
     for(int i = 0; i < 6; i++)
