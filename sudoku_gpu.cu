@@ -15,7 +15,7 @@
 
 typedef char grid[81];
 
-void displayGrid(grid curGrid)
+void displayGrid(grid &curGrid)
 {
     for(int i = 0; i < 9; i++)
     {
@@ -53,7 +53,7 @@ __global__ void initNewGrids(grid *curGrids, grid *newGrids, int r, int c, int c
     int tid = blockDim.x*blockIdx.x + threadIdx.x;
     if(tid < curGridsSize)
     {
-        grid newGridsTid[9] = {0};
+        grid newGridsTid[9];
         int idx = 0;
         for(int i = 1; i <= 9; i++)
         {
@@ -86,7 +86,7 @@ float solve(grid &initGrid, grid* &curGrids, grid* &newGrids, int* startPosition
 {
     cudaEvent_t algo_start, algo_stop;
     float algo_time = 0;
-    int threadsPerBlock = 64, newCount = 0, *curCount;
+    int threadsPerBlock = 128, newCount = 0, *curCount;
     checkCudaErrors(cudaMallocManaged(&curCount, sizeof(int)));
     *curCount = 1;
     memcpy(curGrids[0], initGrid, sizeof(grid));
@@ -140,7 +140,7 @@ int main(void)
     checkCudaErrors(cudaMallocManaged(&startPositions, n*sizeof(int)));
 
     grid myGrids[16] ={ 
-        {5,8,6,0,7,0,0,0,0,0,0,0,9,0,1,6,0,0,0,0,0,6,0,0,0,0,0,0,0,7,0,0,0,0,0,0,9,0,2,0,1,0,3,0,5,0,0,5,0,9,0,0,0,0,0,9,0,0,4,0,0,0,8,0,0,3,5,0,0,0,0,6,0,0,0,0,2,0,4,7,0},
+        {0,2,0,4,0,0,0,8,0,0,0,6,0,8,0,0,0,0,7,0,0,0,0,3,0,0,6,0,0,0,9,0,0,0,0,0,6,0,0,0,0,7,0,0,1,0,0,4,0,2,0,9,0,0,0,6,7,0,0,0,0,0,5,5,0,0,0,0,0,3,1,0,0,1,0,0,0,5,0,0,0},
         {0,0,0,0,0,0,0,0,2,0,0,8,0,1,0,9,0,0,5,0,0,0,0,3,0,4,0,0,0,0,1,0,9,3,0,0,0,6,0,0,3,0,0,8,0,0,0,3,7,0,0,0,0,0,0,4,0,0,0,0,0,0,5,3,0,1,0,7,0,8,0,0,2,0,0,0,0,0,0,0,0},
         {0,0,0,0,0,0,0,0,7,0,0,4,0,2,0,6,0,0,8,0,0,0,0,0,3,1,0,0,0,0,0,0,2,9,0,0,0,4,0,0,9,0,0,3,0,0,0,9,5,0,6,0,0,0,0,1,0,0,0,0,0,0,8,0,0,6,0,5,0,2,0,0,7,0,0,0,0,0,0,6,0},
         {0,0,2,0,0,0,7,0,0,0,1,0,0,0,0,0,6,0,5,0,0,0,0,0,0,1,8,0,0,0,0,3,7,0,0,0,0,0,0,0,4,9,0,0,0,0,0,4,1,0,2,3,0,0,0,0,3,0,2,0,9,0,0,0,8,0,0,0,0,0,5,0,6,0,0,0,0,0,0,0,2},
