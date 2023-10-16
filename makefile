@@ -12,10 +12,10 @@ main: sudoku_gpu.o sudoku_cpu.o
 	${NVCC} ${INC} ${OPT} -o main sudoku_gpu.o
 
 sudoku_gpu.o: sudoku_gpu.cu
-	$(NVCC) ${INC} ${OPT} ${CUDAFLAGS} -std=c++11 -c sudoku_gpu.cu
+	$(NVCC) ${INC} ${OPT} ${CUDAFLAGS} -std=c++14 -c sudoku_gpu.cu
 
 sudoku_cpu.o: sudoku_cpu.cu
-	$(NVCC) ${INC} ${OPT} ${CUDAFLAGS} -std=c++11 -c sudoku_cpu.cu
+	$(NVCC) ${INC} ${OPT} ${CUDAFLAGS} -std=c++14 -c sudoku_cpu.cu
 
 sudoku_gpu: sudoku_gpu.o
 	${NVCC} ${INC} ${CUDAFLAGS} -o sudoku_gpu sudoku_gpu.o
