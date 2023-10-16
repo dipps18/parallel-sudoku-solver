@@ -24,4 +24,4 @@ sudoku_cpu: sudoku_cpu.o
 	${NVCC} ${INC} ${CUDAFLAGS} -o sudoku_cpu sudoku_cpu.o
 
 clean:
-	rm -f *.o sudoku_gpu, sudoku_cpu
+	rm -f *.o sudoku_gpu sudoku_cpu
