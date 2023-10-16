@@ -1,4 +1,5 @@
 NVCC=nvcc
+# NB: change this to sm_50 if it doesn't work for you
 CUDAFLAGS=-arch=sm_30
 OPT=-g -G
 INC=-I./Common
